@@ -189,10 +189,12 @@ async def handle_notification(sender: int, data: bytearray):
         if parsed_data["ppg"] == 0 or parsed_data["spO2"] == 0:
             print("Skipping data with zero ppg and spO2 values")
             return
-
-        timestamp = datetime.now().isoformat()
-        csv_writer.writerow([timestamp] + [parsed_data.get(col, "") for col in parsed_data])
-        print("Written to CSV:", [timestamp] + [parsed_data.get(col, "") for col in parsed_data])  # Confirm write
+        if subtype == 0x03:
+            timestamp = datetime.now().isoformat()
+            print(timestamp, " ", parsed_data["accX"], ", ",
+                  parsed_data["accY"], ", ", parsed_data["accZ"])
+        #csv_writer.writerow([timestamp] + [parsed_data.get(col, "") for col in parsed_data])
+        #print("Written to CSV:", [timestamp] + [parsed_data.get(col, "") for col in parsed_data])  # Confirm write
 
     # Print parsed data to verify the values
     # print("Received data:", parsed_data)
