@@ -42,7 +42,7 @@ os.makedirs(DATA_FOLDER, exist_ok=True)
 timestamp_now = datetime.now().strftime("%Y%m%d_%H%M%S")
 filename = os.path.join(DATA_FOLDER, f"ring_data_{timestamp_now}.csv")
 
-# Utils functions 
+# Utils functions
 
 def resample_data(input_file, resample_ms, columns, output_path=None):
     """Resample the data to a specified frequency in milliseconds and optionally save the result."""
@@ -88,7 +88,7 @@ def plot_data(df, columns, filename, label=None):
 
         # Define the output path with the optional label
         output_path = f"graphs/{base_filename}_{column}.png"
-        
+
         plt.savefig(output_path)
         print(f"Graph saved to {output_path}")
         plt.close()
@@ -126,7 +126,7 @@ def upload_to_edge_impulse(fullpath, label, api_key, category="training", metada
     :param category: Category for the data (e.g., "training", "testing").
     """
     upload_url = f"{INGESTION_URL}/api/{category}/files"
-   
+
 
     # Prepare the request headers and metadata
     headers = {
@@ -163,7 +163,7 @@ async def handle_notification(sender: int, data: bytearray):
         "ppg": "", "ppg_max": "", "ppg_min": "", "ppg_diff": "",
         "spO2": "", "spO2_max": "", "spO2_min": "", "spO2_diff": ""
     }
-    
+
     # Store the payload as a hex string
     parsed_data["payload"] = data.hex()
 
@@ -184,7 +184,7 @@ async def handle_notification(sender: int, data: bytearray):
             parsed_data["accX"] = ((data[6] << 4) | (data[7] & 0xF)) - (1 << 11) if data[6] & 0x8 else ((data[6] << 4) | (data[7] & 0xF))
             parsed_data["accY"] = ((data[2] << 4) | (data[3] & 0xF)) - (1 << 11) if data[2] & 0x8 else ((data[2] << 4) | (data[3] & 0xF))
             parsed_data["accZ"] = ((data[4] << 4) | (data[5] & 0xF)) - (1 << 11) if data[4] & 0x8 else ((data[4] << 4) | (data[5] & 0xF))
-        
+
         # Check if ppg and spO2 are equal to zero; skip writing if true
         if parsed_data["ppg"] == 0 or parsed_data["spO2"] == 0:
             print("Skipping data with zero ppg and spO2 values")
@@ -283,7 +283,7 @@ async def main(duration, label, columns, resample_ms, plot, ei_upload):
                     if not api_key:
                         api_key = input("Please enter your Edge Impulse API Key: ")
                         save_api_key(api_key)
-                    upload_to_edge_impulse(resampled_output_path, label or "unlabeled", api_key, metadata=metadata) 
+                    upload_to_edge_impulse(resampled_output_path, label or "unlabeled", api_key, metadata=metadata)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Bluetooth ring data logger")
