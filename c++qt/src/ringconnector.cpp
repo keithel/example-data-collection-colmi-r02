@@ -189,15 +189,15 @@ void RingConnector::writeToRxCharacteristic(const QByteArray &data)
     m_uartService->writeCharacteristic(m_rxCharacteristic, data, QLowEnergyService::WriteWithoutResponse);
 }
 
-qint8 RingConnector::calculateChecksum(const QByteArray &data)
+char RingConnector::calculateChecksum(const QByteArray &data)
 {
     // Checksum is sum of first 15 bytes, mod 255
     // Python: checksum = sum(bytes_array) & 0xFF
-    quint16 sum = 0;
+    quint8 sum = 0;
     for(char byte : data) {
         sum += static_cast<quint8>(byte);
     }
-    return static_cast<qint8>(sum & 0xFF);
+    return static_cast<char>(sum);
 }
 
 void RingConnector::parseAccelerometerPacket(const QByteArray &packet)

@@ -51,7 +51,7 @@ private slots:
 
 private:
     void writeToRxCharacteristic(const QByteArray &data);
-    qint8 calculateChecksum(const QByteArray &data);
+    char calculateChecksum(const QByteArray &data);
     void parseAccelerometerPacket(const QByteArray &packet);
 
     QBluetoothDeviceDiscoveryAgent *m_discoveryAgent = nullptr;
