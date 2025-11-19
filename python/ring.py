@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import json
 import os
+from pathlib import Path
 import csv
 from bleak import BleakClient, BleakScanner
 from datetime import datetime
@@ -35,12 +36,20 @@ CONFIG_FILE = "config.json"
 DATA_FOLDER = "raw_data"
 INGESTION_URL = "https://ingestion.edgeimpulse.com"  # Base URL for ingestion
 
-# Ensure folder exists
-os.makedirs(DATA_FOLDER, exist_ok=True)
+def ioPath(file_or_folder_name: str, isDir: bool = False) -> Path:
+    """Get the path to a folder or file to either read configs from or store output."""
+    dir = Path(__file__).resolve().parent.parent
+    if isDir and not dir.exists():
+        dir = Path(file_or_folder_name)
+        dir.mkdir(parents=True, exist_ok=True)
+    return dir / file_or_folder_name
 
 # Create filename with current timestamp
 timestamp_now = datetime.now().strftime("%Y%m%d_%H%M%S")
-filename = os.path.join(DATA_FOLDER, f"ring_data_{timestamp_now}.csv")
+data_folder_path = ioPath(DATA_FOLDER, isDir=True)
+filename = (data_folder_path / f"ring_data_{timestamp_now}.csv").as_posix()
+
+config_file_path = ioPath(CONFIG_FILE)
 
 # Utils functions
 
@@ -95,14 +104,14 @@ def plot_data(df, columns, filename, label=None):
 
 def load_config():
     """Load configuration from config.json."""
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r") as file:
+    if config_file_path.exists():
+        with open(config_file_path, "r") as file:
             return json.load(file)
     return {}
 
 def save_config(config):
     """Save configuration to config.json."""
-    with open(CONFIG_FILE, "w") as file:
+    with open(config_file_path, "w") as file:
         json.dump(config, file, indent=4)
 
 def load_api_key():
@@ -211,15 +220,15 @@ async def send_data_array(client, command, service_name):
 
 def load_device_address():
     """Load saved device address from config file."""
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, "r") as file:
+    if config_file_path.exists():
+        with open(config_file_path, "r") as file:
             config = json.load(file)
             return config.get("device_address")
     return None
 
 def save_device_address(address):
     """Save the device address to config file."""
-    with open(CONFIG_FILE, "w") as file:
+    with open(config_file_path, "w") as file:
         json.dump({"device_address": address}, file)
 
 async def select_device():
