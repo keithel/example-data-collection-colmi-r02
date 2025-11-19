@@ -21,7 +21,7 @@ project(r02_data_explorer VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Quick)
+find_package(Qt6 REQUIRED COMPONENTS Core Quick Bluetooth)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -38,6 +38,8 @@ qt_add_qml_module(appR02DataExplorer
         Main.qml
         AboutPage.qml
     SOURCES
+        src/ringconnector.h
+        src/ringconnector.cpp
     RESOURCES
         images/qt-logo.svg
 )
@@ -58,6 +60,7 @@ target_link_libraries(appR02DataExplorer
     PRIVATE
         Qt6::Core
         Qt6::Quick
+        Qt6::Bluetooth
 )
 
 include(GNUInstallDirs)
