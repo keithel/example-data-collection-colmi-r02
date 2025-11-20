@@ -11,12 +11,11 @@ Item {
 
         allowAutoreconnect: autoreconnectCheckbox.checked
 
-        onAccelerometerDataReady: (x, y, z) => {
-            xLabel.text = "X: " + x;
-            yLabel.text = "Y: " + y;
-            zLabel.text = "Z: " + z;
-            bubble.x = (bubbleParent.width / 2) + x/10 - (bubble.width/2)
-            bubble.y = (bubbleParent.height / 2) + y/10 - (bubble.height/2)
+        onAccelerometerDataReady: (value) => {
+            xLabel.text = "X: " + value.x;
+            yLabel.text = "Y: " + value.y;
+            zLabel.text = "Z: " + value.z;
+            bubble.setPos(value);
         }
 
         onStatusUpdate: (message) => {
@@ -73,6 +72,30 @@ Item {
                 y: parent.height/2 - height/2
                 Behavior on x { NumberAnimation { duration: 50; easing.type: Easing.InOutQuad } }
                 Behavior on y { NumberAnimation { duration: 50; easing.type: Easing.InOutQuad } }
+
+                function setPos(vector) {
+                    var scalefactor = 1
+                    var xtmp = (bubbleParent.width / 2) + vector.x/scalefactor - (width/2)
+                    if (xtmp + width > bubbleParent.width)
+                        x = bubbleParent.width-width
+                    else if (xtmp < 0)
+                        x = 0
+                    else
+                        x = xtmp
+
+                    var ytmp = (bubbleParent.height / 2) + vector.y/scalefactor - (height/2)
+                    if (ytmp + height > bubbleParent.height)
+                        y = bubbleParent.height-height
+                    else if (ytmp < 0)
+                        y = 0
+                    else
+                        y = ytmp
+                }
+
+                function reset() {
+                    x = parent.width/2 - width/2
+                    y = parent.height/2 - height/2
+                }
             }
         }
 
@@ -108,6 +131,14 @@ Item {
             CheckBox {
                 id: autoreconnectCheckbox
                 text: "autoreconnect"
+            }
+
+            Button {
+                text: "Calibrate (Tare)"
+                onClicked: {
+                    ring.calibrate()
+                    bubble.reset()
+                }
             }
 
             Button {

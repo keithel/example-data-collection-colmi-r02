@@ -67,6 +67,14 @@ void RingConnector::stopDeviceDiscovery()
     emit statusUpdate("Stopped.");
 }
 
+void RingConnector::calibrate()
+{
+    m_offsetAccel = m_lastRawAccel;
+    emit statusUpdate("Calibrated: Zero point set.");
+    qInfo() << "Calibrated offsets ->" << m_offsetAccel;
+    emit accelerometerDataReady(QVector3D());
+}
+
 void RingConnector::deviceDiscovered(const QBluetoothDeviceInfo &device)
 {
     if (device.coreConfigurations() & QBluetoothDeviceInfo::LowEnergyCoreConfiguration) {
@@ -271,12 +279,17 @@ void RingConnector::parseAccelerometerPacket(const QByteArray &packet)
         for(auto i = 0; i < 6; i++)
             accelBytes[i] = static_cast<quint8>(packet[i+2]);
 
-        int accelVals[3];
+        QVector3D accelVals;
         for(auto i = 0; i < 3; i++)
             accelVals[i] = parse12Bit(accelBytes[i*2], accelBytes[i*2+1]);
 
-        emit accelerometerDataReady(accelVals[0], accelVals[1], accelVals[2]);
-        qDebug() << "Accel Vals x:" << accelVals[0] << "y:" << accelVals[1] << "z:" << accelVals[2];
+        m_lastRawAccel = accelVals;
+
+        // Apply tare offset to the values we send out.
+        accelVals -= m_offsetAccel;
+
+        emit accelerometerDataReady(accelVals);
+        qDebug() << "Accel Vals:" << accelVals;
     }
 }
 

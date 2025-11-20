@@ -7,6 +7,7 @@
 #include <QLowEnergyService>
 #include <QTimer>
 #include <qqmlintegration.h>
+#include <QVector3D>
 
 // UUIDs from ring.py
 const QBluetoothUuid UART_SERVICE_UUID(QStringLiteral("6E40FFF0-B5A3-F393-E0A9-E50E24DCCA9E"));
@@ -31,9 +32,10 @@ public:
 public slots:
     void startDeviceDiscovery();
     void stopDeviceDiscovery();
+    void calibrate();
 
 signals:
-    void accelerometerDataReady(qreal x, qreal y, qreal z);
+    void accelerometerDataReady(QVector3D value);
 
     void statusUpdate(const QString &message);
     void error(const QString &message);
@@ -76,6 +78,10 @@ private:
     bool m_foundRxChar = false;
     bool m_foundTxChar = false;
     bool m_allowAutoreconnect = false;
+
+    // Storage for calibration
+    QVector3D m_lastRawAccel;
+    QVector3D m_offsetAccel;
 };
 
 #endif // RINGCONNECTOR_H
