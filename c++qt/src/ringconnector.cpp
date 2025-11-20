@@ -276,6 +276,7 @@ void RingConnector::parseAccelerometerPacket(const QByteArray &packet)
             accelVals[i] = parse12Bit(accelBytes[i*2], accelBytes[i*2+1]);
 
         emit accelerometerDataReady(accelVals[0], accelVals[1], accelVals[2]);
+        qDebug() << "Accel Vals x:" << accelVals[0] << "y:" << accelVals[1] << "z:" << accelVals[2];
     }
 }
 
