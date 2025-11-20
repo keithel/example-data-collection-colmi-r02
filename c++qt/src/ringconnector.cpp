@@ -46,18 +46,20 @@ void RingConnector::stopDeviceDiscovery()
     }
 
     // We will manage controller cleanup.
-    m_controller->setParent(nullptr);
-    if (m_controller->state() == QLowEnergyController::UnconnectedState) {
-        m_controller->deleteLater();
-    }
-    else {
-        disconnect(m_controllerDisconnectedConnection);
-        connect(m_controller, &QLowEnergyController::disconnected,
-                m_controller, &QObject::deleteLater);
-        m_controller->disconnectFromDevice();
+    if (m_controller) {
+        m_controller->setParent(nullptr);
+        if (m_controller->state() == QLowEnergyController::UnconnectedState) {
+            m_controller->deleteLater();
+        }
+        else {
+            disconnect(m_controllerDisconnectedConnection);
+            connect(m_controller, &QLowEnergyController::disconnected,
+                    m_controller, &QObject::deleteLater);
+            m_controller->disconnectFromDevice();
+        }
+        m_controller = nullptr;
     }
 
-    m_controller = nullptr;
     m_ringDevice = QBluetoothDeviceInfo();
     m_foundRxChar = false;
     m_foundTxChar = false;
