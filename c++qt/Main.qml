@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import R02DataExplorer 1.0
 
 ApplicationWindow {
     id: root
@@ -39,11 +38,7 @@ ApplicationWindow {
 
             id: aboutPage
         }
-        Item {
-            Label {
-                anchors.centerIn: parent
-                text: "Content Goes Here"
-            }
+        AccelerometerDisplay {
         }
     }
 }

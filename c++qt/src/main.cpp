@@ -17,7 +17,6 @@
 
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include "ringconnector.h"
 
 int main(int argc, char *argv[])
 {
@@ -31,18 +30,6 @@ int main(int argc, char *argv[])
         []() { QCoreApplication::exit(-1); },
         Qt::QueuedConnection);
     engine.loadFromModule("R02DataExplorer", "Main");
-
-    RingConnector connector;
-    QObject::connect(&connector, &RingConnector::statusUpdate, [](const QString &message) {
-        qInfo().noquote() << "[STATUS]" << message;
-    });
-    QObject::connect(&connector, &RingConnector::error, [](const QString &errMsg) {
-        qCritical().noquote() << "[ERROR]" << errMsg;
-    });
-    QObject::connect(&connector, &RingConnector::accelerometerDataReady, [](qint16 x, qint16 y, qint16 z) {
-        qInfo().noquote() << "[DATA] x:" << x << "y:" << y << "z:" << z;
-    });
-    connector.startDeviceDiscovery();
 
     return app.exec();
 }
