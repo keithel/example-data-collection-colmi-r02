@@ -15,8 +15,8 @@ Item {
             xLabel.text = "X: " + x;
             yLabel.text = "Y: " + y;
             zLabel.text = "Z: " + z;
-            bubble.x = (root.width / 2) + (x/30) - (bubble.width/2)
-            bubble.y = (root.height / 2) + (y/30) - (bubble.height/2)
+            bubble.x = (bubbleParent.width / 2) + x/10 - (bubble.width/2)
+            bubble.y = (bubbleParent.height / 2) + y/10 - (bubble.height/2)
         }
 
         onStatusUpdate: (message) => {
@@ -47,6 +47,7 @@ Item {
         }
 
         Item {
+            id: bubbleParent
             Layout.fillWidth: true
             Layout.fillHeight: true
             // clip: true // Keep the bubble inside this
