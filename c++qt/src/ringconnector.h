@@ -6,6 +6,7 @@
 #include <QLowEnergyController>
 #include <QLowEnergyService>
 #include <QTimer>
+#include <qqmlintegration.h>
 
 // UUIDs from ring.py
 const QBluetoothUuid UART_SERVICE_UUID(QStringLiteral("6E40FFF0-B5A3-F393-E0A9-E50E24DCCA9E"));
@@ -17,19 +18,27 @@ const QString RING_NAME_PREFIX = "R02";
 class RingConnector : public QObject
 {
     Q_OBJECT
+    QML_ELEMENT
+    Q_PROPERTY(bool allowAutoreconnect READ allowAutoreconnect WRITE setAllowAutoreconnect NOTIFY allowAutoreconnectChanged FINAL)
 
 public:
     explicit RingConnector(QObject *parent = nullptr);
     ~RingConnector();
 
+    inline bool allowAutoreconnect() const { return m_allowAutoreconnect; }
+    void setAllowAutoreconnect(bool newAllowAutoreconnect);
+
 public slots:
     void startDeviceDiscovery();
+    void stopDeviceDiscovery();
 
 signals:
-    void accelerometerDataReady(qint16 x, qint16 y, qint16 z);
+    void accelerometerDataReady(qreal x, qreal y, qreal z);
 
     void statusUpdate(const QString &message);
     void error(const QString &message);
+
+    void allowAutoreconnectChanged();
 
 private slots:
     // Device discovery slots
@@ -54,6 +63,9 @@ private:
     char calculateChecksum(const QByteArray &data);
     void parseAccelerometerPacket(const QByteArray &packet);
 
+private:
+    QMetaObject::Connection m_controllerDisconnectedConnection;
+
     QBluetoothDeviceDiscoveryAgent *m_discoveryAgent = nullptr;
     QLowEnergyController *m_controller = nullptr;
     QLowEnergyService *m_uartService = nullptr;
@@ -63,6 +75,7 @@ private:
     QBluetoothDeviceInfo m_ringDevice;
     bool m_foundRxChar = false;
     bool m_foundTxChar = false;
+    bool m_allowAutoreconnect = false;
 };
 
 #endif // RINGCONNECTOR_H

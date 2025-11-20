@@ -23,16 +23,46 @@ RingConnector::RingConnector(QObject *parent)
 
 RingConnector::~RingConnector()
 {
-    if (m_controller) {
-        m_controller->disconnectFromDevice();
-        delete m_controller;
-    }
+    stopDeviceDiscovery();
 }
 
 void RingConnector::startDeviceDiscovery()
 {
+    if (m_controller)
+        stopDeviceDiscovery();
+
     emit statusUpdate("Starting device discovery...");
     m_discoveryAgent->start(QBluetoothDeviceDiscoveryAgent::LowEnergyMethod);
+}
+
+void RingConnector::stopDeviceDiscovery()
+{
+    if (m_discoveryAgent->isActive())
+        m_discoveryAgent->stop();
+
+    if (m_uartService) {
+        delete m_uartService;
+        m_uartService = nullptr;
+    }
+
+    // We will manage controller cleanup.
+    m_controller->setParent(nullptr);
+    if (m_controller->state() == QLowEnergyController::UnconnectedState) {
+        m_controller->deleteLater();
+    }
+    else {
+        disconnect(m_controllerDisconnectedConnection);
+        connect(m_controller, &QLowEnergyController::disconnected,
+                m_controller, &QObject::deleteLater);
+        m_controller->disconnectFromDevice();
+    }
+
+    m_controller = nullptr;
+    m_ringDevice = QBluetoothDeviceInfo();
+    m_foundRxChar = false;
+    m_foundTxChar = false;
+
+    emit statusUpdate("Stopped.");
 }
 
 void RingConnector::deviceDiscovered(const QBluetoothDeviceInfo &device)
@@ -54,7 +84,8 @@ void RingConnector::deviceDiscovered(const QBluetoothDeviceInfo &device)
                     this, &RingConnector::controllerConnected);
             connect(m_controller, &QLowEnergyController::errorOccurred,
                     this, &RingConnector::controllerError);
-            connect(m_controller, &QLowEnergyController::disconnected,
+            m_controllerDisconnectedConnection = connect(
+                    m_controller, &QLowEnergyController::disconnected,
                     this, &RingConnector::controllerDisconnected);
             connect(m_controller, &QLowEnergyController::serviceDiscovered,
                     this, &RingConnector::serviceDiscovered);
@@ -89,9 +120,17 @@ void RingConnector::controllerError(QLowEnergyController::Error newError)
 
 void RingConnector::controllerDisconnected()
 {
-    emit statusUpdate("Controller disconnected.");
+    if (m_allowAutoreconnect) {
+        emit statusUpdate("Controller disconnected, reconnecting.");
 
-    // TODO: Auto-reconnect logic
+        // Auto-reconnect logic
+        QTimer::singleShot(1000, [this](){
+            startDeviceDiscovery();
+        });
+    }
+    else {
+        emit statusUpdate("Controller disconnected.");
+    }
 }
 
 void RingConnector::serviceDiscovered(const QBluetoothUuid &gatt)
@@ -236,4 +275,12 @@ void RingConnector::parseAccelerometerPacket(const QByteArray &packet)
 
         emit accelerometerDataReady(accelVals[0], accelVals[1], accelVals[2]);
     }
+}
+
+void RingConnector::setAllowAutoreconnect(bool newAllowAutoreconnect)
+{
+    if (m_allowAutoreconnect == newAllowAutoreconnect)
+        return;
+    m_allowAutoreconnect = newAllowAutoreconnect;
+    emit allowAutoreconnectChanged();
 }
