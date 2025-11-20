@@ -13,7 +13,7 @@ ApplicationWindow {
 
     Timer {
         id: aboutTimer
-        interval: 2000
+        interval: 5000
         running: false
 
         Component.onCompleted: {
@@ -32,6 +32,11 @@ ApplicationWindow {
         onCurrentIndexChanged: aboutTimer.stop()
 
         AboutPage {
+            MouseArea {
+                anchors.fill: parent
+                onClicked: stackLayout.currentIndex += 1
+            }
+
             id: aboutPage
         }
         Item {
