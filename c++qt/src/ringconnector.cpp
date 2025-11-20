@@ -202,36 +202,38 @@ char RingConnector::calculateChecksum(const QByteArray &data)
 
 void RingConnector::parseAccelerometerPacket(const QByteArray &packet)
 {
-    // qInfo() << "Parsing packet:" << packet.toHex();
-    if (packet.isEmpty()) {
+    // qInfo() << "Parsing packet of length" << packet.length() << ":" << packet.toHex();
+    if (packet.length() < 10) {
+        // Needs to be long enough to encode the X,Y,Z accelerometer values
         return;
     }
 
     // Packet structure is [CMD, PAYLOAD(14), CHECKSUM]
     // What is the format and offset of X, Y, Z data - not sure if this is correct.
 
-    const char ACCEL_PACKET_CMD = 0xA1;
+    const quint8 ACCEL_PACKET_CMD = 0xA1;
+    const quint8 DESIRED_SUBTYPE = 0x03;
+    const quint8 cmd = static_cast<quint8>(packet[0]);
+    const quint8 subtype = static_cast<quint8>(packet[1]);
 
-    if (packet.at(0) == ACCEL_PACKET_CMD) {
+    if (cmd == ACCEL_PACKET_CMD && subtype == DESIRED_SUBTYPE) {
+        // Helper to extract a 12-bit value from 2 bytes (High, Low)
+        auto parse12Bit = [](quint8 h, quint8 l) -> int {
+            int val = (h << 4) | (l & 0xF);
+            if (h & 0x08) {
+                val -= (1 << 11); // 2048
+            }
+            return val;
+        };
 
-        // Check if packet is long enough for 3x qint16
-        if (packet.length() < (1 + 6)) { // 1-byte cmd + 6-bytes data
-            qWarning() << "Accel packet too short:" << packet.length();
-            return;
-        }
+        quint8 accelBytes[6];
+        for(auto i = 0; i < 6; i++)
+            accelBytes[i] = static_cast<quint8>(packet[i+2]);
 
-        // Skip the command
-        QDataStream stream(packet.mid(1));
-        stream.setByteOrder(QDataStream::LittleEndian); // GATT fields usually are little endian
+        int accelVals[3];
+        for(auto i = 0; i < 3; i++)
+            accelVals[i] = parse12Bit(accelBytes[i*2], accelBytes[i*2+1]);
 
-        qint16 x, y, z;
-        stream >> x >> y >> z;
-
-        if (stream.status() != QDataStream::Ok) {
-            qWarning() << "Failed to parse accelerometer data.";
-        } else {
-            // qInfo() << "Accel:" << x << y << z;
-            emit accelerometerDataReady(x, y, z);
-        }
+        emit accelerometerDataReady(accelVals[0], accelVals[1], accelVals[2]);
     }
 }
