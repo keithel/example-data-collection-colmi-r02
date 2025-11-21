@@ -10,6 +10,7 @@ Item {
         Component.onDestruction: stopDeviceDiscovery();
 
         allowAutoreconnect: autoreconnectCheckbox.checked
+        mouseControlEnabled: mouseControlCheckbox.checked
 
         onAccelerometerDataReady: (value) => {
             xLabel.text = "X: " + value.x;
@@ -131,6 +132,11 @@ Item {
             CheckBox {
                 id: autoreconnectCheckbox
                 text: "autoreconnect"
+            }
+
+            CheckBox {
+                id: mouseControlCheckbox
+                text: "mouse control"
             }
 
             Button {

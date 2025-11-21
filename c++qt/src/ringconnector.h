@@ -8,6 +8,8 @@
 #include <QTimer>
 #include <qqmlintegration.h>
 #include <QVector3D>
+#include <QCursor> // Added for mouse control
+#include <QPoint>
 
 // UUIDs from ring.py
 const QBluetoothUuid UART_SERVICE_UUID(QStringLiteral("6E40FFF0-B5A3-F393-E0A9-E50E24DCCA9E"));
@@ -21,6 +23,7 @@ class RingConnector : public QObject
     Q_OBJECT
     QML_ELEMENT
     Q_PROPERTY(bool allowAutoreconnect READ allowAutoreconnect WRITE setAllowAutoreconnect NOTIFY allowAutoreconnectChanged FINAL)
+    Q_PROPERTY(bool mouseControlEnabled READ mouseControlEnabled WRITE setMouseControlEnabled NOTIFY mouseControlEnabledChanged)
 
 public:
     explicit RingConnector(QObject *parent = nullptr);
@@ -28,6 +31,8 @@ public:
 
     inline bool allowAutoreconnect() const { return m_allowAutoreconnect; }
     void setAllowAutoreconnect(bool newAllowAutoreconnect);
+    bool mouseControlEnabled() const { return m_mouseControlEnabled; }
+    void setMouseControlEnabled(bool enabled);
 
 public slots:
     void startDeviceDiscovery();
@@ -41,6 +46,7 @@ signals:
     void error(const QString &message);
 
     void allowAutoreconnectChanged();
+    void mouseControlEnabledChanged();
 
 private slots:
     // Device discovery slots
@@ -64,6 +70,7 @@ private:
     void writeToRxCharacteristic(const QByteArray &data);
     char calculateChecksum(const QByteArray &data);
     void parseAccelerometerPacket(const QByteArray &packet);
+    void handleMouseMovement(QVector3D accelVector);
 
 private:
     QMetaObject::Connection m_controllerDisconnectedConnection;
@@ -82,6 +89,12 @@ private:
     // Storage for calibration
     QVector3D m_lastRawAccel;
     QVector3D m_offsetAccel;
+
+    bool m_mouseControlEnabled = false;
+
+    // Configuration
+    const int DEADZONE = 200;   // Ignore movements smaller than this
+    const double SENSITIVITY = 0.015; // Multiplier for cursor speed
 };
 
 #endif // RINGCONNECTOR_H

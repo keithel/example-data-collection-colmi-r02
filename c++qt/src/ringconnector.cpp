@@ -2,6 +2,8 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QDataStream>
+#include <QGuiApplication>
+#include <QScreen>
 
 RingConnector::RingConnector(QObject *parent)
     : QObject(parent),
@@ -288,6 +290,11 @@ void RingConnector::parseAccelerometerPacket(const QByteArray &packet)
         // Apply tare offset to the values we send out.
         accelVals -= m_offsetAccel;
 
+        // Handle Mouse Logic (if enabled)
+        if (m_mouseControlEnabled) {
+            handleMouseMovement(accelVals);
+        }
+
         emit accelerometerDataReady(accelVals);
         qDebug() << "Accel Vals:" << accelVals;
     }
@@ -299,4 +306,44 @@ void RingConnector::setAllowAutoreconnect(bool newAllowAutoreconnect)
         return;
     m_allowAutoreconnect = newAllowAutoreconnect;
     emit allowAutoreconnectChanged();
+}
+
+void RingConnector::setMouseControlEnabled(bool enabled)
+{
+    if (m_mouseControlEnabled != enabled) {
+        m_mouseControlEnabled = enabled;
+        emit mouseControlEnabledChanged();
+        if (enabled)
+            emit statusUpdate("Mouse Control ENABLED");
+        else
+            emit statusUpdate("Mouse Control DISABLED");
+    }
+}
+
+void RingConnector::handleMouseMovement(QVector3D accelVector)
+{
+    int x = accelVector.x();
+    int y = accelVector.y();
+
+    // 1. Deadzone check
+    if (std::abs(x) < DEADZONE) x = 0;
+    else x = (x > 0) ? x - DEADZONE : x + DEADZONE;
+
+    if (std::abs(y) < DEADZONE) y = 0;
+    else y = (y > 0) ? y - DEADZONE : y + DEADZONE;
+
+    // 2. Move cursor if there is significant input
+    if (x != 0 || y != 0) {
+        QPoint currentPos = QCursor::pos();
+
+        // Apply sensitivity and direct mapping
+        // X -> X (Roll Right = Mouse Right)
+        // Y -> Y (Pitch Down = Mouse Down)
+        int dx = static_cast<int>(x * SENSITIVITY);
+        int dy = static_cast<int>(y * SENSITIVITY);
+
+        QCursor::setPos(currentPos.x() + dx, currentPos.y() + dy);
+    }
+
+    // TODO: Click detection using 'z' axis jerk
 }
