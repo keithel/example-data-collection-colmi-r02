@@ -38,10 +38,11 @@ public slots:
     void startDeviceDiscovery();
     void stopDeviceDiscovery();
     void calibrate();
+    void getBatteryLevel();
 
 signals:
-    void accelerometerDataReady(QVector3D value);
-
+    void accelerometerDataReady(QVector3D accelVector);
+    void batteryLevelReceived(int level, int voltage);
     void statusUpdate(const QString &message);
     void error(const QString &message);
 
@@ -69,7 +70,7 @@ private slots:
 private:
     void writeToRxCharacteristic(const QByteArray &data);
     char calculateChecksum(const QByteArray &data);
-    void parseAccelerometerPacket(const QByteArray &packet);
+    void parsePacket(const QByteArray &packet); // Renamed from parseAccelerometerPacket
     void handleMouseMovement(QVector3D accelVector);
 
 private:

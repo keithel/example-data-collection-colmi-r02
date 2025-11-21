@@ -25,6 +25,10 @@ Item {
             console.log("[STATUS]", message)
         }
 
+        onBatteryLevelReceived: (level, voltage) => {
+            batteryLabel.text = "Bat: " + level + "% (" + voltage + "mV)"
+        }
+
         onError: (message) => {
             statusLabel.text = "Error: " + message
             statusLabel.color = "#FF5555"
@@ -127,6 +131,15 @@ Item {
             }
         }
 
+        // Battery Info
+        Label {
+            id: batteryLabel
+            text: "Bat: --%"
+            color: "#FFFF00"
+            font.pixelSize: 18
+            Layout.alignment: Qt.AlignHCenter
+        }
+
         RowLayout {
             Layout.alignment: Qt.AlignHCenter
             CheckBox {
@@ -154,6 +167,11 @@ Item {
                     console.log("Restarting connection...")
                     ring.startDeviceDiscovery()
                 }
+            }
+
+            Button {
+                text: "Get Battery"
+                onClicked: ring.getBatteryLevel()
             }
         }
     }

@@ -77,6 +77,22 @@ void RingConnector::calibrate()
     emit accelerometerDataReady(QVector3D());
 }
 
+void RingConnector::getBatteryLevel()
+{
+    if (!m_foundRxChar || !m_uartService) {
+        emit error("Cannot get battery: Not connected.");
+        return;
+    }
+
+    // Command: 0x03 (Battery Request)
+    QByteArray commandPacket(16, 0x00);
+    commandPacket[0] = static_cast<char>(0x03);
+    commandPacket[15] = calculateChecksum(commandPacket.left(15));
+
+    emit statusUpdate("Requesting Battery Level...");
+    writeToRxCharacteristic(commandPacket);
+}
+
 void RingConnector::deviceDiscovered(const QBluetoothDeviceInfo &device)
 {
     if (device.coreConfigurations() & QBluetoothDeviceInfo::LowEnergyCoreConfiguration) {
@@ -227,7 +243,7 @@ void RingConnector::characteristicChanged(const QLowEnergyCharacteristic &charac
 {
     if (characteristic.uuid() == UART_TX_CHAR_UUID) {
         // qInfo() << "Raw data received:" << value.toHex();
-        parseAccelerometerPacket(value);
+        parsePacket(value);
     }
 }
 
@@ -251,23 +267,24 @@ char RingConnector::calculateChecksum(const QByteArray &data)
     return static_cast<char>(sum);
 }
 
-void RingConnector::parseAccelerometerPacket(const QByteArray &packet)
+void RingConnector::parsePacket(const QByteArray &packet)
 {
-    // qInfo() << "Parsing packet of length" << packet.length() << ":" << packet.toHex();
-    if (packet.length() < 10) {
-        // Needs to be long enough to encode the X,Y,Z accelerometer values
-        return;
-    }
+    if (packet.length() < 3) return;
 
-    // Packet structure is [CMD, PAYLOAD(14), CHECKSUM]
-    // What is the format and offset of X, Y, Z data - not sure if this is correct.
+    // Packet structure  for ACCEL_PACKET_CMD is [CMD, PAYLOAD(14), CHECKSUM]
 
     const quint8 ACCEL_PACKET_CMD = 0xA1;
-    const quint8 DESIRED_SUBTYPE = 0x03;
+    const quint8 BATT_PACKET_CMD = 0x03;
     const quint8 cmd = static_cast<quint8>(packet[0]);
-    const quint8 subtype = static_cast<quint8>(packet[1]);
 
-    if (cmd == ACCEL_PACKET_CMD && subtype == DESIRED_SUBTYPE) {
+
+    if (cmd == ACCEL_PACKET_CMD) {
+        if (packet.length() < 10) return;
+
+        const quint8 DESIRED_SUBTYPE = 0x03;
+        const quint8 subtype = static_cast<quint8>(packet[1]);
+        if (subtype != DESIRED_SUBTYPE) return;
+
         // Helper to extract a 12-bit value from 2 bytes (High, Low)
         auto parse12Bit = [](quint8 h, quint8 l) -> int {
             int val = (h << 4) | (l & 0xF);
@@ -297,6 +314,24 @@ void RingConnector::parseAccelerometerPacket(const QByteArray &packet)
 
         emit accelerometerDataReady(accelVals);
         qDebug() << "Accel Vals:" << accelVals;
+    }
+    // --- Battery Data ---
+    else if (cmd == BATT_PACKET_CMD) {
+        // Based on tahnok/colmi_r02_client battery.py
+        // Packet: [0x03, level, voltage_h, voltage_l, ..., checksum]
+        if (packet.length() >= 4) {
+            quint8 level = static_cast<quint8>(packet[1]);
+            // Voltage is likely big-endian or little-endian uint16.
+            // Usually battery voltage is around 3000-4200mV
+            quint8 v_h = static_cast<quint8>(packet[2]);
+            quint8 v_l = static_cast<quint8>(packet[3]);
+
+            // Assuming Big Endian for now based on typical protocols, but verify if values look wrong
+            int voltage = (v_h << 8) | v_l;
+
+            emit batteryLevelReceived(level, voltage);
+            emit statusUpdate(QString("Battery: %1% (%2 mV)").arg(level).arg(voltage));
+        }
     }
 }
 
