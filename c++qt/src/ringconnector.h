@@ -24,6 +24,8 @@ class RingConnector : public QObject
     QML_ELEMENT
     Q_PROPERTY(bool allowAutoreconnect READ allowAutoreconnect WRITE setAllowAutoreconnect NOTIFY allowAutoreconnectChanged FINAL)
     Q_PROPERTY(bool mouseControlEnabled READ mouseControlEnabled WRITE setMouseControlEnabled NOTIFY mouseControlEnabledChanged)
+    Q_PROPERTY(int batteryLevel READ batteryLevel NOTIFY batteryLevelChanged FINAL)
+    Q_PROPERTY(int batteryVoltage READ batteryVoltage NOTIFY batteryVoltageChanged FINAL)
 
 public:
     explicit RingConnector(QObject *parent = nullptr);
@@ -33,21 +35,23 @@ public:
     void setAllowAutoreconnect(bool newAllowAutoreconnect);
     bool mouseControlEnabled() const { return m_mouseControlEnabled; }
     void setMouseControlEnabled(bool enabled);
+    int batteryLevel() const { return m_batteryLevel; }
+    int batteryVoltage() const { return m_batteryVoltage; }
 
 public slots:
     void startDeviceDiscovery();
     void stopDeviceDiscovery();
     void calibrate();
-    void getBatteryLevel();
 
 signals:
     void accelerometerDataReady(QVector3D accelVector);
-    void batteryLevelReceived(int level, int voltage);
     void statusUpdate(const QString &message);
     void error(const QString &message);
 
     void allowAutoreconnectChanged();
     void mouseControlEnabledChanged();
+    void batteryLevelChanged();
+    void batteryVoltageChanged();
 
 private slots:
     // Device discovery slots
@@ -66,6 +70,8 @@ private slots:
     // QLowEnergyService slots
     void serviceStateChanged(QLowEnergyService::ServiceState newState);
     void characteristicChanged(const QLowEnergyCharacteristic &characteristic, const QByteArray &value);
+
+    void getBatteryLevel();
 
 private:
     void writeToRxCharacteristic(const QByteArray &data);
@@ -96,6 +102,10 @@ private:
     // Configuration
     const int DEADZONE = 200;   // Ignore movements smaller than this
     const double SENSITIVITY = 0.015; // Multiplier for cursor speed
+
+    QTimer *m_batteryRequestTimer = nullptr;
+    int m_batteryLevel = -1;
+    int m_batteryVoltage = -1;
 };
 
 #endif // RINGCONNECTOR_H
