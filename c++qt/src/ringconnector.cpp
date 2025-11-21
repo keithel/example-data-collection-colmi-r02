@@ -10,7 +10,8 @@ RingConnector::RingConnector(QObject *parent)
     : QObject(parent),
     m_discoveryAgent(new QBluetoothDeviceDiscoveryAgent(this)),
     m_controller(nullptr),
-    m_uartService(nullptr)
+    m_uartService(nullptr),
+    m_batteryRequestTimer(new QTimer(this))
 {
     connect(m_discoveryAgent, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered,
             this, &RingConnector::deviceDiscovered);
@@ -22,6 +23,10 @@ RingConnector::RingConnector(QObject *parent)
                     emit this->error(QString("Device discovery error: %1").arg(error));
                 }
             });
+
+    m_batteryRequestTimer->setInterval(30000);
+    m_batteryRequestTimer->setSingleShot(false);
+    connect(m_batteryRequestTimer, &QTimer::timeout, this, &RingConnector::getBatteryLevel);
 }
 
 RingConnector::~RingConnector()
@@ -119,22 +124,6 @@ void RingConnector::calibrate()
     m_smoothY = 0;
 
     emit statusUpdate("Calibrated! Zero point set.");
-}
-
-void RingConnector::getBatteryLevel()
-{
-    if (!m_foundRxChar || !m_uartService) {
-        emit error("Cannot get battery: Not connected.");
-        return;
-    }
-
-    // Command: 0x03 (Battery Request)
-    QByteArray commandPacket(16, 0x00);
-    commandPacket[0] = static_cast<char>(0x03);
-    commandPacket[15] = calculateChecksum(commandPacket.left(15));
-
-    emit statusUpdate("Requesting Battery Level...");
-    writeToRxCharacteristic(commandPacket);
 }
 
 void RingConnector::deviceDiscovered(const QBluetoothDeviceInfo &device)
@@ -279,6 +268,13 @@ void RingConnector::serviceStateChanged(QLowEnergyService::ServiceState newState
 
             emit statusUpdate(QString("Writing 'Start Stream' command (0xA104): %1").arg(commandPacket.toHex()));
             writeToRxCharacteristic(commandPacket);
+
+            if (!m_batteryRequestTimer->isActive()) {
+                // Request battery level immediately, and start a timer that will repeatedly request the battery level.
+                // See constructor for interval and connection.
+                getBatteryLevel();
+                m_batteryRequestTimer->start();
+            }
         }
     }
 }
@@ -289,6 +285,22 @@ void RingConnector::characteristicChanged(const QLowEnergyCharacteristic &charac
         // qInfo() << "Raw data received:" << value.toHex();
         parsePacket(value);
     }
+}
+
+void RingConnector::getBatteryLevel()
+{
+    if (!m_foundRxChar || !m_uartService) {
+        emit error("Cannot get battery: Not connected.");
+        return;
+    }
+
+    // Command: 0x03 (Battery Request)
+    QByteArray commandPacket(16, 0x00);
+    commandPacket[0] = static_cast<char>(0x03);
+    commandPacket[15] = calculateChecksum(commandPacket.left(15));
+
+    // emit statusUpdate("Requesting Battery Level...");
+    writeToRxCharacteristic(commandPacket);
 }
 
 void RingConnector::writeToRxCharacteristic(const QByteArray &data)
@@ -408,8 +420,16 @@ void RingConnector::parsePacket(const QByteArray &packet)
             // Assuming Big Endian for now based on typical protocols, but verify if values look wrong
             int voltage = (v_h << 8) | v_l;
 
-            emit batteryLevelReceived(level, voltage);
-            emit statusUpdate(QString("Battery: %1% (%2 mV)").arg(level).arg(voltage));
+            qInfo() << "[BAT STATUS]" << level << "%" << voltage << "mV";
+            if (m_batteryLevel != level) {
+                m_batteryLevel = level;
+                emit batteryLevelChanged();
+            }
+            if (m_batteryVoltage != voltage) {
+                m_batteryVoltage = voltage;
+                emit batteryVoltageChanged();
+            }
+            // emit statusUpdate(QString("Battery: %1% (%2 mV)").arg(level).arg(voltage));
         }
     }
 }

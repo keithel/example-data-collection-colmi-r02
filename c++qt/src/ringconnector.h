@@ -30,6 +30,8 @@ class RingConnector : public QObject
     Q_PROPERTY(double sensitivity READ sensitivity WRITE setSensitivity NOTIFY sensitivityChanged FINAL)
     Q_PROPERTY(int deadzone READ deadzone WRITE setDeadzone NOTIFY deadzoneChanged FINAL)
     Q_PROPERTY(double smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
+    Q_PROPERTY(int batteryLevel READ batteryLevel NOTIFY batteryLevelChanged FINAL)
+    Q_PROPERTY(int batteryVoltage READ batteryVoltage NOTIFY batteryVoltageChanged FINAL)
 
 public:
     explicit RingConnector(QObject *parent = nullptr);
@@ -43,12 +45,13 @@ public:
     double sensitivity() const { return m_sensitivity; }
     int deadzone() const { return m_deadzone; }
     double smoothing() const { return m_smoothing; }
+    int batteryLevel() const { return m_batteryLevel; }
+    int batteryVoltage() const { return m_batteryVoltage; }
 
 public slots:
     void startDeviceDiscovery();
     void stopDeviceDiscovery();
     void calibrate();
-    void getBatteryLevel();
 
     void setAllowAutoreconnect(bool newAllowAutoreconnect);
     void setMouseControlEnabled(bool enabled);
@@ -61,7 +64,6 @@ public slots:
 
 signals:
     void accelerometerDataReady(QVector3D accelVector);
-    void batteryLevelReceived(int level, int voltage);
     void statusUpdate(const QString &message);
     void error(const QString &message);
     void allowAutoreconnectChanged();
@@ -72,6 +74,8 @@ signals:
     void sensitivityChanged();
     void deadzoneChanged();
     void smoothingChanged();
+    void batteryLevelChanged();
+    void batteryVoltageChanged();
 
 private slots:
     // Device discovery slots
@@ -90,6 +94,8 @@ private slots:
     // QLowEnergyService slots
     void serviceStateChanged(QLowEnergyService::ServiceState newState);
     void characteristicChanged(const QLowEnergyCharacteristic &characteristic, const QByteArray &value);
+
+    void getBatteryLevel();
 
 private:
     void writeToRxCharacteristic(const QByteArray &data);
@@ -127,6 +133,10 @@ private:
     // Smoothing State
     double m_smoothX = 0;
     double m_smoothY = 0;
+
+    QTimer *m_batteryRequestTimer = nullptr;
+    int m_batteryLevel = -1;
+    int m_batteryVoltage = -1;
 };
 
 #endif // RINGCONNECTOR_H
