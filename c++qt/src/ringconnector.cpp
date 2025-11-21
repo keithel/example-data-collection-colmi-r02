@@ -4,6 +4,7 @@
 #include <QDataStream>
 #include <QGuiApplication>
 #include <QScreen>
+#include <QtMath> // Added for rotation math
 
 RingConnector::RingConnector(QObject *parent)
     : QObject(parent),
@@ -28,6 +29,42 @@ RingConnector::~RingConnector()
     stopDeviceDiscovery();
 }
 
+// --- Tuning Property Setters ---
+
+void RingConnector::setRotation(double angleDegrees)
+{
+    if (!qFuzzyCompare(m_rotation, angleDegrees)) {
+        m_rotation = angleDegrees;
+        emit rotationChanged();
+    }
+}
+
+void RingConnector::setSensitivity(double val)
+{
+    if (!qFuzzyCompare(m_sensitivity, val)) {
+        m_sensitivity = val;
+        emit sensitivityChanged();
+    }
+}
+
+void RingConnector::setDeadzone(int val)
+{
+    if (m_deadzone != val) {
+        m_deadzone = val;
+        emit deadzoneChanged();
+    }
+}
+
+void RingConnector::setSmoothing(double alpha)
+{
+    if (!qFuzzyCompare(m_smoothing, alpha)) {
+        m_smoothing = alpha;
+        emit smoothingChanged();
+    }
+}
+
+// --- Main Logic ---
+
 void RingConnector::startDeviceDiscovery()
 {
     if (m_controller)
@@ -47,14 +84,18 @@ void RingConnector::stopDeviceDiscovery()
         m_uartService = nullptr;
     }
 
-    // We will manage controller cleanup.
+    // We will manage controller deletion via deleteLater to allow signals to process
     if (m_controller) {
+        disconnect(m_controllerDisconnectedConnection);
+        m_controller->disconnect();
+
+        // Unparent to prevent double-deletion issues during app exit
         m_controller->setParent(nullptr);
+
         if (m_controller->state() == QLowEnergyController::UnconnectedState) {
             m_controller->deleteLater();
-        }
-        else {
-            disconnect(m_controllerDisconnectedConnection);
+        } else {
+            // Wait for disconnection before deleting
             connect(m_controller, &QLowEnergyController::disconnected,
                     m_controller, &QObject::deleteLater);
             m_controller->disconnectFromDevice();
@@ -72,9 +113,12 @@ void RingConnector::stopDeviceDiscovery()
 void RingConnector::calibrate()
 {
     m_offsetAccel = m_lastRawAccel;
-    emit statusUpdate("Calibrated: Zero point set.");
-    qInfo() << "Calibrated offsets ->" << m_offsetAccel;
-    emit accelerometerDataReady(QVector3D());
+
+    // Reset smoothing to prevent a "jump" when zeroing
+    m_smoothX = 0;
+    m_smoothY = 0;
+
+    emit statusUpdate("Calibrated! Zero point set.");
 }
 
 void RingConnector::deviceDiscovered(const QBluetoothDeviceInfo &device)
@@ -290,13 +334,48 @@ void RingConnector::parseAccelerometerPacket(const QByteArray &packet)
         // Apply tare offset to the values we send out.
         accelVals -= m_offsetAccel;
 
-        // Handle Mouse Logic (if enabled)
-        if (m_mouseControlEnabled) {
-            handleMouseMovement(accelVals);
+        double x = accelVals.x();
+        double y = accelVals.y();
+        double z = accelVals.z();
+
+        // Apply Smoothing (Low Pass Filter)
+        // m_smoothing is alpha. 1.0 = no smoothing (raw), 0.1 = heavy lag
+        // We invert it for the UI: setSmoothing(0.9) -> heavy smoothing
+        double alpha = 1.0 - m_smoothing;
+        if (alpha < 0.01) alpha = 0.01;
+
+        m_smoothX = (alpha * x) + ((1.0 - alpha) * m_smoothX);
+        m_smoothY = (alpha * y) + ((1.0 - alpha) * m_smoothY);
+
+        double procX = m_smoothX;
+        double procY = m_smoothY;
+
+        // Apply Rotation Matrix (Correction for ring angle on finger)
+        if (!qFuzzyIsNull(m_rotation)) {
+            double rad = qDegreesToRadians(m_rotation);
+            double cosA = qCos(rad);
+            double sinA = qSin(rad);
+
+            // Standard 2D rotation
+            double rotX = procX * cosA - procY * sinA;
+            double rotY = procX * sinA + procY * cosA;
+
+            procX = rotX;
+            procY = rotY;
         }
 
-        emit accelerometerDataReady(accelVals);
-        qDebug() << "Accel Vals:" << accelVals;
+        // Construct the FINAL vector that represents user intent (Screen X/Y)
+        QVector3D processedVals(static_cast<float>(procX),
+                                static_cast<float>(procY),
+                                static_cast<float>(z));
+
+        // Handle Mouse Movement with the processed vector
+        if (m_mouseControlEnabled) {
+            handleMouseMovement(processedVals);
+        }
+
+        // Emit the processed vector so the UI bubble moves in the corrected direction
+        emit accelerometerDataReady(processedVals);
     }
 }
 
@@ -322,28 +401,26 @@ void RingConnector::setMouseControlEnabled(bool enabled)
 
 void RingConnector::handleMouseMovement(QVector3D accelVector)
 {
-    int x = accelVector.x();
-    int y = accelVector.y();
+    double x = accelVector.x();
+    double y = accelVector.y();
 
-    // 1. Deadzone check
-    if (std::abs(x) < DEADZONE) x = 0;
-    else x = (x > 0) ? x - DEADZONE : x + DEADZONE;
+    // Deadzone check (Circular)
+    double mag = std::sqrt(x*x + y*y);
+    if (mag < m_deadzone) {
+        x = 0;
+        y = 0;
+    }
 
-    if (std::abs(y) < DEADZONE) y = 0;
-    else y = (y > 0) ? y - DEADZONE : y + DEADZONE;
-
-    // 2. Move cursor if there is significant input
+    // Move cursor if there is significant input
     if (x != 0 || y != 0) {
         QPoint currentPos = QCursor::pos();
 
-        // Apply sensitivity and direct mapping
-        // X -> X (Roll Right = Mouse Right)
-        // Y -> Y (Pitch Down = Mouse Down)
-        int dx = static_cast<int>(x * SENSITIVITY);
-        int dy = static_cast<int>(y * SENSITIVITY);
+        // Apply sensitivity
+        int dx = static_cast<int>(x * m_sensitivity);
+        int dy = static_cast<int>(y * m_sensitivity);
 
-        QCursor::setPos(currentPos.x() + dx, currentPos.y() + dy);
+        if (dx != 0 || dy != 0) {
+            QCursor::setPos(currentPos.x() + dx, currentPos.y() + dy);
+        }
     }
-
-    // TODO: Click detection using 'z' axis jerk
 }

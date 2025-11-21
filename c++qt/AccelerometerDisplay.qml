@@ -13,10 +13,14 @@ Item {
         mouseControlEnabled: mouseControlCheckbox.checked
 
         onAccelerometerDataReady: (value) => {
-            xLabel.text = "X: " + value.x;
-            yLabel.text = "Y: " + value.y;
-            zLabel.text = "Z: " + value.z;
-            bubble.setPos(value);
+            xLabel.text = "X: " + Math.round(value.x);
+            yLabel.text = "Y: " + Math.round(value.y);
+            zLabel.text = "Z: " + Math.round(value.z);
+
+            // Visual scaling for the bubble so it doesn't fly off screen immediately
+            var visualScale = 0.1
+            var visualPos = Qt.vector3d(value.x * visualScale, value.y * visualScale, 0)
+            bubble.setPos(visualPos);
         }
 
         onStatusUpdate: (message) => {
@@ -50,7 +54,7 @@ Item {
             id: bubbleParent
             Layout.fillWidth: true
             Layout.fillHeight: true
-            // clip: true // Keep the bubble inside this
+            //clip: true // Keep the bubble inside this
 
             // Centerpoint
             Rectangle {
@@ -66,37 +70,33 @@ Item {
                 width: 40
                 height: 40
                 radius: 20
-                color: "#2CDE85"
+                color: ring.mouseControlEnabled ? "#FF2CDE" : "#2CDE85"
                 border.color: "white"
                 border.width: 2
-                x: parent.width/2 - width/2
-                y: parent.height/2 - height/2
-                Behavior on x { NumberAnimation { duration: 50; easing.type: Easing.InOutQuad } }
-                Behavior on y { NumberAnimation { duration: 50; easing.type: Easing.InOutQuad } }
 
-                function setPos(vector) {
-                    var scalefactor = 1
-                    var xtmp = (bubbleParent.width / 2) + vector.x/scalefactor - (width/2)
-                    if (xtmp + width > bubbleParent.width)
-                        x = bubbleParent.width-width
-                    else if (xtmp < 0)
-                        x = 0
-                    else
-                        x = xtmp
+                // Initial pos
+                x: parent.width / 2 - width / 2
+                y: parent.height / 2 - height / 2
 
-                    var ytmp = (bubbleParent.height / 2) + vector.y/scalefactor - (height/2)
-                    if (ytmp + height > bubbleParent.height)
-                        y = bubbleParent.height-height
-                    else if (ytmp < 0)
-                        y = 0
-                    else
-                        y = ytmp
+                function setPos(val) {
+                    var centerX = parent.width / 2 - width / 2
+                    var centerY = parent.height / 2 - height / 2
+
+                    var newX = centerX + val.x
+                    var newY = centerY + val.y
+
+                    // Clamp to view
+                    x = Math.max(0, Math.min(parent.width - width, newX))
+                    y = Math.max(0, Math.min(parent.height - height, newY))
                 }
 
                 function reset() {
-                    x = parent.width/2 - width/2
-                    y = parent.height/2 - height/2
+                    x = parent.width / 2 - width / 2
+                    y = parent.height / 2 - height / 2
                 }
+
+                Behavior on x { NumberAnimation { duration: 50; easing.type: Easing.OutQuad } }
+                Behavior on y { NumberAnimation { duration: 50; easing.type: Easing.OutQuad } }
             }
         }
 
@@ -132,6 +132,7 @@ Item {
             CheckBox {
                 id: autoreconnectCheckbox
                 text: "autoreconnect"
+                checked: true
             }
 
             CheckBox {
@@ -154,6 +155,64 @@ Item {
                     console.log("Restarting connection...")
                     ring.startDeviceDiscovery()
                 }
+            }
+
+            Button {
+                text: "Settings"
+                onClicked: settingsDrawer.open()
+            }
+        }
+    }
+
+    // --- Tuning Drawer ---
+    Drawer {
+        id: settingsDrawer
+        edge: Qt.BottomEdge
+        width: parent.width
+        height: 350
+        background: Rectangle { color: "#222"; border.color: "#444" }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 20
+            spacing: 10
+
+            Label { text: "Tuning Settings"; color: "white"; font.bold: true; font.pixelSize: 16 }
+
+            // Rotation
+            Label { text: `Rotation Correction: ${ring.rotation.toFixed(0)}°`; color: "white" }
+            Slider {
+                Layout.fillWidth: true
+                from: 0; to: 360
+                value: ring.rotation
+                onMoved: ring.rotation = value
+            }
+
+            // Sensitivity
+            Label { text: `Sensitivity: ${ring.sensitivity.toFixed(3)}`; color: "white" }
+            Slider {
+                Layout.fillWidth: true
+                from: 0.001; to: 0.1
+                value: ring.sensitivity
+                onMoved: ring.sensitivity = value
+            }
+
+            // Deadzone
+            Label { text: `Deadzone: ${ring.deadzone}`; color: "white" }
+            Slider {
+                Layout.fillWidth: true
+                from: 0; to: 500
+                value: ring.deadzone
+                onMoved: ring.deadzone = value
+            }
+
+            // Smoothing
+            Label { text: `Smoothing: ${ring.smoothing.toFixed(2)}`; color: "white" }
+            Slider {
+                Layout.fillWidth: true
+                from: 0.0; to: 0.95
+                value: ring.smoothing
+                onMoved: ring.smoothing = value
             }
         }
     }

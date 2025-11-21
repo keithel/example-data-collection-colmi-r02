@@ -25,28 +25,51 @@ class RingConnector : public QObject
     Q_PROPERTY(bool allowAutoreconnect READ allowAutoreconnect WRITE setAllowAutoreconnect NOTIFY allowAutoreconnectChanged FINAL)
     Q_PROPERTY(bool mouseControlEnabled READ mouseControlEnabled WRITE setMouseControlEnabled NOTIFY mouseControlEnabledChanged)
 
+    // --- Added Tuning Properties ---
+    Q_PROPERTY(double rotation READ rotation WRITE setRotation NOTIFY rotationChanged)
+    Q_PROPERTY(double sensitivity READ sensitivity WRITE setSensitivity NOTIFY sensitivityChanged)
+    Q_PROPERTY(int deadzone READ deadzone WRITE setDeadzone NOTIFY deadzoneChanged)
+    Q_PROPERTY(double smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged)
+
 public:
     explicit RingConnector(QObject *parent = nullptr);
     ~RingConnector();
 
     inline bool allowAutoreconnect() const { return m_allowAutoreconnect; }
-    void setAllowAutoreconnect(bool newAllowAutoreconnect);
     bool mouseControlEnabled() const { return m_mouseControlEnabled; }
-    void setMouseControlEnabled(bool enabled);
+
+    // Property Getters
+    double rotation() const { return m_rotation; }
+    double sensitivity() const { return m_sensitivity; }
+    int deadzone() const { return m_deadzone; }
+    double smoothing() const { return m_smoothing; }
 
 public slots:
     void startDeviceDiscovery();
     void stopDeviceDiscovery();
     void calibrate();
 
-signals:
-    void accelerometerDataReady(QVector3D value);
+    void setAllowAutoreconnect(bool newAllowAutoreconnect);
+    void setMouseControlEnabled(bool enabled);
 
+    // Property Setters
+    void setRotation(double angleDegrees);
+    void setSensitivity(double val);
+    void setDeadzone(int val);
+    void setSmoothing(double alpha);
+
+signals:
+    void accelerometerDataReady(QVector3D accelVector);
     void statusUpdate(const QString &message);
     void error(const QString &message);
-
     void allowAutoreconnectChanged();
     void mouseControlEnabledChanged();
+
+    // Property Notifiers
+    void rotationChanged();
+    void sensitivityChanged();
+    void deadzoneChanged();
+    void smoothingChanged();
 
 private slots:
     // Device discovery slots
@@ -92,9 +115,16 @@ private:
 
     bool m_mouseControlEnabled = false;
 
-    // Configuration
-    const int DEADZONE = 200;   // Ignore movements smaller than this
-    const double SENSITIVITY = 0.015; // Multiplier for cursor speed
+    // --- Tuning Configuration ---
+    // Changed from const to member variables for runtime tuning
+    int m_deadzone = 200;
+    double m_sensitivity = 0.015;
+    double m_rotation = 0.0;     // Degrees
+    double m_smoothing = 0.5;    // Alpha (0.0 - 1.0)
+
+    // Smoothing State
+    double m_smoothX = 0;
+    double m_smoothY = 0;
 };
 
 #endif // RINGCONNECTOR_H
