@@ -26,10 +26,10 @@ class RingConnector : public QObject
     Q_PROPERTY(bool mouseControlEnabled READ mouseControlEnabled WRITE setMouseControlEnabled NOTIFY mouseControlEnabledChanged)
 
     // --- Added Tuning Properties ---
-    Q_PROPERTY(double rotation READ rotation WRITE setRotation NOTIFY rotationChanged)
-    Q_PROPERTY(double sensitivity READ sensitivity WRITE setSensitivity NOTIFY sensitivityChanged)
-    Q_PROPERTY(int deadzone READ deadzone WRITE setDeadzone NOTIFY deadzoneChanged)
-    Q_PROPERTY(double smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged)
+    Q_PROPERTY(double rotation READ rotation WRITE setRotation NOTIFY rotationChanged FINAL)
+    Q_PROPERTY(double sensitivity READ sensitivity WRITE setSensitivity NOTIFY sensitivityChanged FINAL)
+    Q_PROPERTY(int deadzone READ deadzone WRITE setDeadzone NOTIFY deadzoneChanged FINAL)
+    Q_PROPERTY(double smoothing READ smoothing WRITE setSmoothing NOTIFY smoothingChanged FINAL)
 
 public:
     explicit RingConnector(QObject *parent = nullptr);
@@ -48,6 +48,7 @@ public slots:
     void startDeviceDiscovery();
     void stopDeviceDiscovery();
     void calibrate();
+    void getBatteryLevel();
 
     void setAllowAutoreconnect(bool newAllowAutoreconnect);
     void setMouseControlEnabled(bool enabled);
@@ -60,6 +61,7 @@ public slots:
 
 signals:
     void accelerometerDataReady(QVector3D accelVector);
+    void batteryLevelReceived(int level, int voltage);
     void statusUpdate(const QString &message);
     void error(const QString &message);
     void allowAutoreconnectChanged();
@@ -92,7 +94,7 @@ private slots:
 private:
     void writeToRxCharacteristic(const QByteArray &data);
     char calculateChecksum(const QByteArray &data);
-    void parseAccelerometerPacket(const QByteArray &packet);
+    void parsePacket(const QByteArray &packet); // Renamed from parseAccelerometerPacket
     void handleMouseMovement(QVector3D accelVector);
 
 private:
