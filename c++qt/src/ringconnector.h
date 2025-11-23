@@ -50,7 +50,6 @@ public:
 
 public slots:
     void startDeviceDiscovery();
-    void stopDeviceDiscovery();
     void calibrate();
 
     void setAllowAutoreconnect(bool newAllowAutoreconnect);
@@ -98,6 +97,8 @@ private slots:
     void getBatteryLevel();
 
 private:
+    void disableStream();
+    void stopDeviceDiscovery();
     void writeToRxCharacteristic(const QByteArray &data);
     char calculateChecksum(const QByteArray &data);
     void parsePacket(const QByteArray &packet); // Renamed from parseAccelerometerPacket
