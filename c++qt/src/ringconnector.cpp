@@ -4,6 +4,7 @@
 #include <QDataStream>
 #include <QGuiApplication>
 #include <QScreen>
+#include <QThread>
 
 RingConnector::RingConnector(QObject *parent)
     : QObject(parent),
@@ -271,6 +272,10 @@ void RingConnector::disableStream()
         disablePacket[15] = calculateChecksum(disablePacket.left(15));
         writeToRxCharacteristic(disablePacket);
         emit statusUpdate("Sent Disable Stream command.");
+
+        // Sleep for 100ms to give BLE stack a chance to actually transmit the
+        // packet before we rip the connection down.
+        QThread::msleep(100);
     }
 }
 
