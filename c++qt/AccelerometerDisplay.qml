@@ -42,7 +42,7 @@ Item {
         id: battIndicator
         width: 64
         height: 64
-        visible: true
+        visible: false
 
         Rectangle {
             anchors.fill: parent
