@@ -15,12 +15,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>
 
-#include <QGuiApplication>
+#include <QApplication>
 #include <QQmlApplicationEngine>
 
 int main(int argc, char *argv[])
 {
-    QGuiApplication app(argc, argv);
+    QApplication app(argc, argv);
+
+    app.setQuitOnLastWindowClosed(false);
 
     QQmlApplicationEngine engine;
     QObject::connect(

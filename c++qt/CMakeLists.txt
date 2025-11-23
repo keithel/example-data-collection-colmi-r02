@@ -21,7 +21,8 @@ project(r02_data_explorer VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Quick Bluetooth)
+find_package(Qt6 REQUIRED COMPONENTS Core Quick Bluetooth Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
@@ -37,12 +38,14 @@ qt_add_qml_module(appR02DataExplorer
     QML_FILES
         Main.qml
         AboutPage.qml
+        AccelerometerDisplay.qml
     SOURCES
         src/ringconnector.h
         src/ringconnector.cpp
+        src/systemtray.h
+        src/systemtray.cpp
     RESOURCES
         images/qt-logo.svg
-        QML_FILES AccelerometerDisplay.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -62,7 +65,9 @@ target_link_libraries(appR02DataExplorer
         Qt6::Core
         Qt6::Quick
         Qt6::Bluetooth
+        Qt6::Widgets
 )
+target_link_libraries(appR02DataExplorer PRIVATE Qt6::Core)
 
 include(GNUInstallDirs)
 install(TARGETS appR02DataExplorer
