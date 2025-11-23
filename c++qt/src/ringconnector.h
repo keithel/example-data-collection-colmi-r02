@@ -26,6 +26,7 @@ class RingConnector : public QObject
     Q_PROPERTY(bool mouseControlEnabled READ mouseControlEnabled WRITE setMouseControlEnabled NOTIFY mouseControlEnabledChanged)
     Q_PROPERTY(int batteryLevel READ batteryLevel NOTIFY batteryLevelChanged FINAL)
     Q_PROPERTY(int batteryVoltage READ batteryVoltage NOTIFY batteryVoltageChanged FINAL)
+    Q_PROPERTY(int packetRate READ packetRate NOTIFY packetRateChanged FINAL)
 
 public:
     explicit RingConnector(QObject *parent = nullptr);
@@ -37,6 +38,7 @@ public:
     void setMouseControlEnabled(bool enabled);
     int batteryLevel() const { return m_batteryLevel; }
     int batteryVoltage() const { return m_batteryVoltage; }
+    int packetRate() const { return m_packetRate; }
 
 public slots:
     void startDeviceDiscovery();
@@ -51,6 +53,7 @@ signals:
     void mouseControlEnabledChanged();
     void batteryLevelChanged();
     void batteryVoltageChanged();
+    void packetRateChanged();
 
 private slots:
     // Device discovery slots
@@ -71,6 +74,7 @@ private slots:
     void characteristicChanged(const QLowEnergyCharacteristic &characteristic, const QByteArray &value);
 
     void getBatteryLevel();
+    void updatePacketRate();
 
 private:
     void disableStream();
@@ -107,6 +111,10 @@ private:
     QTimer *m_batteryRequestTimer = nullptr;
     int m_batteryLevel = -1;
     int m_batteryVoltage = -1;
+
+    QTimer *m_packetRateTimer = nullptr;
+    int m_packetCounter = 0;
+    int m_packetRate = -1;
 };
 
 #endif // RINGCONNECTOR_H

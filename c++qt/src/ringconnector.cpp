@@ -11,7 +11,8 @@ RingConnector::RingConnector(QObject *parent)
     m_discoveryAgent(new QBluetoothDeviceDiscoveryAgent(this)),
     m_controller(nullptr),
     m_uartService(nullptr),
-    m_batteryRequestTimer(new QTimer(this))
+    m_batteryRequestTimer(new QTimer(this)),
+    m_packetRateTimer(new QTimer(this))
 {
     connect(m_discoveryAgent, &QBluetoothDeviceDiscoveryAgent::deviceDiscovered,
             this, &RingConnector::deviceDiscovered);
@@ -27,6 +28,9 @@ RingConnector::RingConnector(QObject *parent)
     m_batteryRequestTimer->setInterval(30000);
     m_batteryRequestTimer->setSingleShot(false);
     connect(m_batteryRequestTimer, &QTimer::timeout, this, &RingConnector::getBatteryLevel);
+
+    connect(m_packetRateTimer, &QTimer::timeout, this, &RingConnector::updatePacketRate);
+    m_packetRateTimer->start(5000);
 }
 
 RingConnector::~RingConnector()
@@ -261,6 +265,16 @@ void RingConnector::getBatteryLevel()
     writeToRxCharacteristic(commandPacket);
 }
 
+void RingConnector::updatePacketRate()
+{
+    if (m_packetRate != m_packetCounter) {
+        m_packetRate = m_packetCounter / (m_packetRateTimer->interval()/1000);
+        qDebug().noquote().nospace() << "Packet rate: " << m_packetRate << " Hz";
+        emit packetRateChanged();
+    }
+    m_packetCounter = 0;
+}
+
 void RingConnector::disableStream()
 {
     if (m_uartService && m_rxCharacteristic.isValid() && m_controller
@@ -302,6 +316,8 @@ char RingConnector::calculateChecksum(const QByteArray &data)
 void RingConnector::parsePacket(const QByteArray &packet)
 {
     if (packet.length() < 3) return;
+
+    m_packetCounter++;
 
     // Packet structure  for ACCEL_PACKET_CMD is [CMD, PAYLOAD(14), CHECKSUM]
 
