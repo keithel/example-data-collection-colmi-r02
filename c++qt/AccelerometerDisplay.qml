@@ -9,7 +9,6 @@ Item {
     RingConnector {
         id: ring
         Component.onCompleted: startDeviceDiscovery();
-        Component.onDestruction: stopDeviceDiscovery();
 
         allowAutoreconnect: autoreconnectCheckbox.checked
         mouseControlEnabled: mouseControlCheckbox.checked

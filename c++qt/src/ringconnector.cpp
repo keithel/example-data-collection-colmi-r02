@@ -30,6 +30,7 @@ RingConnector::RingConnector(QObject *parent)
 
 RingConnector::~RingConnector()
 {
+    disableStream();
     stopDeviceDiscovery();
 }
 
@@ -257,6 +258,20 @@ void RingConnector::getBatteryLevel()
 
     // emit statusUpdate("Requesting Battery Level...");
     writeToRxCharacteristic(commandPacket);
+}
+
+void RingConnector::disableStream()
+{
+    if (m_uartService && m_rxCharacteristic.isValid() && m_controller
+        && m_controller->state() == QLowEnergyController::DiscoveredState) {
+        qDebug() << "Sending Disable Stream command";
+        QByteArray disablePacket(16, 0x00);
+        disablePacket[0] = 0xA1;
+        disablePacket[1] = 0x02;
+        disablePacket[15] = calculateChecksum(disablePacket.left(15));
+        writeToRxCharacteristic(disablePacket);
+        emit statusUpdate("Sent Disable Stream command.");
+    }
 }
 
 void RingConnector::writeToRxCharacteristic(const QByteArray &data)
