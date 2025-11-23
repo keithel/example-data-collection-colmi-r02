@@ -4,6 +4,8 @@ import QtQuick.Layouts
 import R02DataExplorer
 
 Item {
+    signal showWindowRequested();
+
     RingConnector {
         id: ring
         Component.onCompleted: startDeviceDiscovery();
@@ -19,6 +21,11 @@ Item {
             bubble.setPos(value);
         }
 
+        onBatteryLevelChanged: {
+            sysTray.toolTip = "Colmi R02: " + batteryLevel + "%"
+            sysTray.updateIcon(battIndicator)
+        }
+
         onStatusUpdate: (message) => {
             statusLabel.text = message
             statusLabel.color = "#AAA"
@@ -29,6 +36,57 @@ Item {
             statusLabel.text = "Error: " + message
             statusLabel.color = "#FF5555"
             console.log("[ERROR]", message)
+        }
+    }
+
+    Item {
+        id: battIndicator
+        width: 64
+        height: 64
+        visible: true
+
+        Rectangle {
+            anchors.fill: parent
+            color: "transparent"
+
+            Rectangle {
+                id: batBody
+                x: 10
+                y: 20
+                width: 44
+                height: 24
+                color: "transparent"
+                border.color: "white"
+                border.width: 4
+
+                Rectangle {
+                    property int margins: 4
+                    anchors {
+                        top: parent.top
+                        bottom: parent.bottom
+                        left: parent.left
+                        margins: margins
+                    }
+                    width: (parent.width - margins*2) * (Math.max(0, ring.batteryLevel) / 100)
+                    color: ring.batteryLevel > 20 ? "#4CAF50" : "#F44336"
+                }
+            }
+
+            Rectangle {
+                anchors.left: batBody.right
+                anchors.verticalCenter: batBody.verticalCenter
+                width: 4
+                height: 12
+                color: "white"
+            }
+        }
+
+        SystemTray {
+            id: sysTray
+            visible: true
+            onQuitTriggered: Qt.quit();
+            onShowDetailsRequested: showWindowRequested()
+            Component.onCompleted: updateIcon(battIndicator)
         }
     }
 

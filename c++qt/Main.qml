@@ -39,6 +39,7 @@ ApplicationWindow {
             id: aboutPage
         }
         AccelerometerDisplay {
+            onShowWindowRequested: root.visible = true
         }
     }
 }
